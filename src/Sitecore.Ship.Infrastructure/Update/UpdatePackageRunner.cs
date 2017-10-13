@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Sitecore.ContentSearch.Maintenance;
 using Sitecore.IO;
 using Sitecore.SecurityModel;
 using Sitecore.Ship.Core;
 using Sitecore.Ship.Core.Contracts;
 using Sitecore.Ship.Core.Domain;
+using Sitecore.Ship.Infrastructure.Extensions;
 using Sitecore.Update;
 using Sitecore.Update.Installer;
 using Sitecore.Update.Installer.Exceptions;
@@ -35,7 +37,7 @@ namespace Sitecore.Ship.Infrastructure.Update
             {
                 if (disableIndexing)
                 {
-                    Sitecore.Configuration.Settings.Indexing.Enabled = false;
+                    IndexCustodian.PauseIndexing();
                 }
 
                 var installationInfo = GetInstallationInfo(packagePath);
@@ -82,7 +84,7 @@ namespace Sitecore.Ship.Infrastructure.Update
                 {
                     if (disableIndexing)
                     {
-                        Sitecore.Configuration.Settings.Indexing.Enabled = true;
+                        IndexCustodian.ResumeIndexing();
                     }
 
                     try
@@ -113,19 +115,24 @@ namespace Sitecore.Ship.Infrastructure.Update
                 }
             }
         }
-        
+
         private PackageInstallationInfo GetInstallationInfo(string packagePath)
         {
+            if (string.IsNullOrEmpty(packagePath))
+            {
+                throw new Exception("Package is not selected.");
+            }
             var info = new PackageInstallationInfo
             {
                 Mode = InstallMode.Install,
                 Action = UpgradeAction.Upgrade,
                 Path = packagePath
             };
-            if (string.IsNullOrEmpty(info.Path))
-            {
-                throw new Exception("Package is not selected.");
-            }
+            // this is what we need to do in Sitecore 8.2 Update 2
+            // info.ProcessingMode = ProcessingMode.All
+            // Unfortunately that code is not compilable in previous versions
+            // .SetProcessingMode() assigns that property using reflection
+            info.SetProcessingMode();
             return info;
         }
 
