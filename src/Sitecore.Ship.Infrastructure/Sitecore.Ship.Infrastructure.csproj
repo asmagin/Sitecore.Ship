@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Sitecore.Ship.Infrastructure</RootNamespace>
     <AssemblyName>Sitecore.Ship.Infrastructure</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -36,6 +36,9 @@
   <ItemGroup>
     <Reference Include="Sitecore.Client">
       <HintPath>..\..\Lib\Sitecore.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Sitecore.ContentSearch">
+      <HintPath>..\..\lib\Sitecore.ContentSearch.dll</HintPath>
     </Reference>
     <Reference Include="Sitecore.Kernel">
       <HintPath>..\..\Lib\Sitecore.Kernel.dll</HintPath>
@@ -76,6 +79,7 @@
     <Compile Include="Configuration\PackageInstallationConfigurationProvider.cs" />
     <Compile Include="DataAccess\PackageHistoryRepository.cs" />
     <Compile Include="Diagnostics\Logger.cs" />
+    <Compile Include="Extensions\PackageInstallationInfoExtensions.cs" />
     <Compile Include="Install\PackageManifestReader.cs" />
     <Compile Include="IO\TempPackager.cs" />
     <Compile Include="Web\HttpRequestChecker.cs" />
