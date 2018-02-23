@@ -24,6 +24,8 @@ namespace Sitecore.Ship.AspNet
 
             var publishingLastCompletedCommand = new PublishingLastCompletedCommand();
 
+            var installedPackagesCommand = new InstalledPackagesCommand();
+
             var unhandledCommand = new UnhandledCommand();
 
             aboutCommand.SetSuccessor(installPackageCommand);
@@ -36,7 +38,9 @@ namespace Sitecore.Ship.AspNet
 
             invokePublishingCommand.SetSuccessor(publishingLastCompletedCommand);
 
-            publishingLastCompletedCommand.SetSuccessor(unhandledCommand);
+            publishingLastCompletedCommand.SetSuccessor(installedPackagesCommand);
+
+            installedPackagesCommand.SetSuccessor(unhandledCommand);
 
             _commandChain = aboutCommand;
         }

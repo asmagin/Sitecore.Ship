@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Web;
+using System.IO;
 using Newtonsoft.Json;
 using Sitecore.Ship.Core;
 using Sitecore.Ship.Core.Contracts;
@@ -17,18 +18,21 @@ namespace Sitecore.Ship.AspNet.Package
     public class InstallPackageCommand : CommandHandler
     {
         private readonly IPackageRepository _repository;
+        private readonly IPackageHistoryRepository _packageHistoryRepository;
         private readonly IInstallationRecorder _installationRecorder;
 
-        public InstallPackageCommand(IPackageRepository repository, IInstallationRecorder installationRecorder)
+        public InstallPackageCommand(IPackageRepository repository, IInstallationRecorder installationRecorder, IPackageHistoryRepository packageHistoryRepository)
         {
             _repository = repository;
             _installationRecorder = installationRecorder;
+            _packageHistoryRepository = packageHistoryRepository;
         }
 
-        public InstallPackageCommand() 
+        public InstallPackageCommand()
             : this(new PackageRepository(new UpdatePackageRunner(new PackageManifestReader())),
-                   new InstallationRecorder(new PackageHistoryRepository(), new PackageInstallationConfigurationProvider().Settings))
-        {           
+                  new InstallationRecorder(new PackageHistoryRepository(), new PackageInstallationConfigurationProvider().Settings),
+                  new PackageHistoryRepository())
+        {
         }
 
         public override void HandleRequest(HttpContextBase context)
@@ -38,18 +42,30 @@ namespace Sitecore.Ship.AspNet.Package
                 try
                 {
                     var package = GetRequest(context.Request);
-                    var manifest = _repository.AddPackage(package);
-                    _installationRecorder.RecordInstall(package.Path, DateTime.Now);       
+                    var name = Path.GetFileName(package.Path);
+                    if (_packageHistoryRepository.IsAlreadyInstalled(name, package.Hash, package.ForceInstall) == false)
+                    {
+                        var manifest = _repository.AddPackage(package);
+                        _installationRecorder.RecordInstall(package.Path, DateTime.Now, package.Hash);
 
-                    var json = JsonConvert.SerializeObject(new { manifest.Entries });
+                        var json = JsonConvert.SerializeObject(new { manifest.Entries });
 
-                    JsonResponse(json, HttpStatusCode.Created, context);
+                        JsonResponse(json, HttpStatusCode.Created, context);
 
-                    context.Response.AddHeader("Location", ShipServiceUrl.PackageLatestVersion);
+                        context.Response.AddHeader("Location", ShipServiceUrl.PackageLatestVersion);
+                    }
+                    else
+                    {
+                        var json =JsonConvert.SerializeObject("Package has already been installed.");
+
+                        JsonResponse(json, HttpStatusCode.Accepted, context);
+
+                        context.Response.AddHeader("Location", ShipServiceUrl.InstalledPackagesCommand);
+                    }
                 }
                 catch (NotFoundException)
                 {
-                    context.Response.StatusCode = (int) HttpStatusCode.NotFound;
+                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
                 }
             }
             else if (Successor != null)
@@ -60,14 +76,14 @@ namespace Sitecore.Ship.AspNet.Package
 
         private static bool CanHandle(HttpContextBase context)
         {
-            return context.Request.Url != null && 
-                   context.Request.Url.PathAndQuery.EndsWith("/services/package/install", StringComparison.InvariantCultureIgnoreCase) && 
+            return context.Request.Url != null &&
+                   context.Request.Url.PathAndQuery.EndsWith("/services/package/install", StringComparison.InvariantCultureIgnoreCase) &&
                    context.Request.HttpMethod == "POST";
         }
 
         private static InstallPackage GetRequest(HttpRequestBase request)
         {
-            return new InstallPackage { Path = request.Form["path"] };
+            return new InstallPackage(request.Form["path"], request.Form["DisableIndexing"], request.Form["ForceInstall"]);
         }
     }
 }

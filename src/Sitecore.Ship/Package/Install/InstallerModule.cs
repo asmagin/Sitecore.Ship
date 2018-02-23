@@ -37,7 +37,7 @@ namespace Sitecore.Ship.Package.Install
             {
                 var package = this.Bind<InstallPackage>();
                 var manifest = _repository.AddPackage(package);
-                _installationRecorder.RecordInstall(package.Path, DateTime.Now);
+                _installationRecorder.RecordInstall(package.Path, DateTime.Now, package.Hash);
 
                 if (package.DisableManifest)
                 {
@@ -68,21 +68,18 @@ namespace Sitecore.Ship.Package.Install
 
                 if (file == null)
                 {
-                    return new Response {StatusCode = HttpStatusCode.BadRequest};
+                    return new Response { StatusCode = HttpStatusCode.BadRequest };
                 }
 
                 PackageManifest manifest;
                 try
                 {
-                    var package = new InstallPackage
-                                      {
-                                          Path = _tempPackager.GetPackageToInstall(file.Value), 
-                                          DisableIndexing = uploadPackage.DisableIndexing
-                                      };
+                    var package = new InstallPackage(_tempPackager.GetPackageToInstall(file.Value), uploadPackage.DisableIndexing);
+
                     manifest = _repository.AddPackage(package);
-                    _installationRecorder.RecordInstall(uploadPackage.PackageId, uploadPackage.Description, DateTime.Now);
+                    _installationRecorder.RecordInstall(uploadPackage.PackageId, DateTime.Now, package.Hash, uploadPackage.Description);
                 }
-                finally 
+                finally
                 {
                     _tempPackager.Dispose();
                 }
@@ -117,7 +114,7 @@ namespace Sitecore.Ship.Package.Install
                     return new Response
                     {
                         StatusCode = HttpStatusCode.NoContent
-                    }; 
+                    };
                 }
 
                 return Response.AsJson(installedPackage);

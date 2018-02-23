@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.16
+VisualStudioVersion = 15.0.27130.2024
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F0717179-F14B-4667-8D5A-5980EC935F0F}"
 EndProject
@@ -71,6 +71,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Postman", "Postman", "{7684F283-CC34-455B-BC75-BA436AE7B32C}"
 	ProjectSection(SolutionItems) = preProject
 		tests\acceptance-test\Postman\Sitecore.Ship.postman_collection.json = tests\acceptance-test\Postman\Sitecore.Ship.postman_collection.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7A805521-6D10-49B6-BC42-4A623DEF4E6C}"
+	ProjectSection(SolutionItems) = preProject
+		cake.config = cake.config
 	EndProjectSection
 EndProject
 Global

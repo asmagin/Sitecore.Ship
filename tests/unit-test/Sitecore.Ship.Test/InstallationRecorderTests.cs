@@ -26,7 +26,7 @@ namespace Sitecore.Ship.Test
             {
                 RecordInstallationHistory = true
             };
-            
+
             _recorder = new InstallationRecorder(_mockPackageHistoryRepository.Object, _packageInstallationSettings);
 
             _dateInstalled = DateTime.Now;
@@ -37,15 +37,15 @@ namespace Sitecore.Ship.Test
         {
             _packageInstallationSettings.RecordInstallationHistory = false;
 
-            _recorder.RecordInstall("01-Description.zip", _dateInstalled);
+            _recorder.RecordInstall("01-Description.zip", _dateInstalled, "SOMEHASHVALUE");
 
             _mockPackageHistoryRepository.Verify(x => x.Add(It.IsAny<InstalledPackage>()), Times.Never());
         }
-       
+
         [Fact]
         public void Record_install_parses_packageid_correctly_when_relative_path_provided()
         {
-            _recorder.RecordInstall("01-Description.zip", _dateInstalled);
+            _recorder.RecordInstall("01-Description.zip", _dateInstalled, "SOMEHASHVALUE");
 
             _mockPackageHistoryRepository.Verify(x => x.Add(It.Is<InstalledPackage>(p => p.PackageId == "01")));
         }
@@ -53,7 +53,7 @@ namespace Sitecore.Ship.Test
         [Fact]
         public void Record_install_parses_packageid_correctly_when_full_path_provided()
         {
-            _recorder.RecordInstall("C:\\aaa\\bbb\\01-Description.zip", _dateInstalled);
+            _recorder.RecordInstall("C:\\aaa\\bbb\\01-Description.zip", _dateInstalled, "SOMEHASHVALUE");
 
             _mockPackageHistoryRepository.Verify(x => x.Add(It.Is<InstalledPackage>(p => p.PackageId == "01")));
         }
@@ -61,7 +61,7 @@ namespace Sitecore.Ship.Test
         [Fact]
         public void Record_install_parses_description_correctly()
         {
-            _recorder.RecordInstall("01-Description.zip", _dateInstalled);
+            _recorder.RecordInstall("01-Description.zip", _dateInstalled, "SOMEHASHVALUE");
 
             _mockPackageHistoryRepository.Verify(x => x.Add(It.Is<InstalledPackage>(p => p.Description == "Description")));
         }
@@ -72,10 +72,9 @@ namespace Sitecore.Ship.Test
             _mockPackageHistoryRepository.Setup(x => x.GetAll()).Returns(
                 new List<InstalledPackage>
                     {
-                        new InstalledPackage {PackageId = "01"},
-                        new InstalledPackage {PackageId = "02"},
-                        new InstalledPackage {PackageId = "03"},
-                        
+                        new InstalledPackage("01", DateTime.Now.AddDays(-3), "TestPackage#1", "SOMEHASHVALUE#1"),
+                        new InstalledPackage("02", DateTime.Now.AddDays(-2), "TestPackage#2", "SOMEHASHVALUE#2"),
+                        new InstalledPackage("03", DateTime.Now.AddDays(-1), "TestPackage#3", "SOMEHASHVALUE#3")
                     });
 
             var result = _recorder.GetLatestPackage();

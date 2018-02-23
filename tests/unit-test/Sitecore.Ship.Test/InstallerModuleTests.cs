@@ -8,6 +8,7 @@ using Sitecore.Ship.Core;
 using Sitecore.Ship.Core.Contracts;
 using Sitecore.Ship.Core.Domain;
 using Sitecore.Ship.Package.Install;
+using System;
 
 namespace Sitecore.Ship.Test
 {
@@ -158,7 +159,7 @@ namespace Sitecore.Ship.Test
         [Fact]
         public void Should_return_valid_json_when_accessing_latestversion()
         {
-            _mockInstallationRecorder.Setup(x => x.GetLatestPackage()).Returns(new InstalledPackage());
+            _mockInstallationRecorder.Setup(x => x.GetLatestPackage()).Returns(new InstalledPackage("01", DateTime.Now.AddDays(-3), "TestPackage#1", "SOMEHASHVALUE#1"));
 
             // Act
             var response = _browser.Get("/services/package/latestversion", with => with.HttpRequest());

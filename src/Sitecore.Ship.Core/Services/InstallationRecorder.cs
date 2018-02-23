@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -7,8 +8,11 @@ using Sitecore.Ship.Core.Domain;
 
 namespace Sitecore.Ship.Core.Services
 {
+
     public class InstallationRecorder : IInstallationRecorder
     {
+        private const string FORMAT_STRING = "Missing {0} parameter, required as installation is being recorded";
+
         private readonly IPackageHistoryRepository _packageHistoryRepository;
         private readonly PackageInstallationSettings _packageInstallationSettings;
 
@@ -18,38 +22,27 @@ namespace Sitecore.Ship.Core.Services
             _packageInstallationSettings = packageInstallationSettings;
         }
 
-        public void RecordInstall(string packagePath, DateTime dateInstalled)
+        public void RecordInstall(string packagePath, DateTime dateInstalled, string hash)
         {
             if (!_packageInstallationSettings.RecordInstallationHistory) return;
 
             var packageId = GetPackageIdFromName(packagePath);
             var description = GetDescription(packagePath);
-            
-            var record = new InstalledPackage
-                {
-                    DateInstalled = dateInstalled,
-                    PackageId = packageId,
-                    Description = description
-                };
+
+            var record = new InstalledPackage(packageId, dateInstalled, description, hash);
 
             _packageHistoryRepository.Add(record);
         }
 
-        public void RecordInstall(string packageId, string description, DateTime dateInstalled)
+        public void RecordInstall(string packageId, DateTime dateInstalled, string hash, string description = null)
         {
             if (!_packageInstallationSettings.RecordInstallationHistory) return;
 
-            const string formatString = "Missing {0} parameter, required as installation is being recorded";
+            if (string.IsNullOrEmpty(packageId)) throw new ArgumentException(string.Format(FORMAT_STRING, "PackageId"));
+            if (string.IsNullOrEmpty(description)) throw new ArgumentException(string.Format(FORMAT_STRING, "Description"));
+            if (string.IsNullOrEmpty(hash)) throw new ArgumentException(string.Format(FORMAT_STRING, "Hash"));
 
-            if (string.IsNullOrEmpty(packageId)) throw new ArgumentException(string.Format(formatString, "PackageId"));
-            if (string.IsNullOrEmpty(description)) throw new ArgumentException(string.Format(formatString, "Description"));
-
-            var record = new InstalledPackage
-                {
-                    DateInstalled = dateInstalled,
-                    PackageId = packageId,
-                    Description = description
-                };
+            var record = new InstalledPackage(packageId, dateInstalled, description, hash);
 
             _packageHistoryRepository.Add(record);
         }
@@ -67,9 +60,22 @@ namespace Sitecore.Ship.Core.Services
             return new InstalledPackageNotFound();
         }
 
+        public ICollection<InstalledPackage> GetInstalledPackages()
+        {
+            if (_packageInstallationSettings.RecordInstallationHistory)
+            {
+                var children = _packageHistoryRepository.GetAll();
+                var packages = children.OrderByDescending(x => int.Parse(x.PackageId)).ToList();
+
+                return packages;
+            }
+
+            return new List<InstalledPackage>();
+        }
+
         private string GetDescription(string packagePath)
         {
-           return Path.GetFileName(packagePath).Split('-').Last().Split('.').First();
+            return Path.GetFileName(packagePath).Split('-').Last().Split('.').First();
         }
 
         private string GetPackageIdFromName(string packagePath)

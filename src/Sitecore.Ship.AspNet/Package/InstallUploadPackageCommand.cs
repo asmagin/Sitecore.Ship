@@ -8,8 +8,8 @@ using Sitecore.Ship.Core.Domain;
 using Sitecore.Ship.Core.Services;
 using Sitecore.Ship.Infrastructure.Configuration;
 using Sitecore.Ship.Infrastructure.DataAccess;
-using Sitecore.Ship.Infrastructure.IO;
 using Sitecore.Ship.Infrastructure.Install;
+using Sitecore.Ship.Infrastructure.IO;
 using Sitecore.Ship.Infrastructure.Update;
 using Sitecore.Ship.Infrastructure.Web;
 
@@ -17,22 +17,25 @@ namespace Sitecore.Ship.AspNet.Package
 {
     public class InstallUploadPackageCommand : CommandHandler
     {
-        private readonly IPackageRepository _repository;
+        private readonly IPackageRepository _packageRepository;
+        private readonly IPackageHistoryRepository _packageHistoryRepository;
         private readonly ITempPackager _tempPackager;
         private readonly IInstallationRecorder _installationRecorder;
 
-        public InstallUploadPackageCommand(IPackageRepository repository, ITempPackager tempPackager, IInstallationRecorder installationRecorder)
+        public InstallUploadPackageCommand(IPackageRepository packageRepository, IPackageHistoryRepository packageHistoryRepository, ITempPackager tempPackager, IInstallationRecorder installationRecorder)
         {
-            _repository = repository;
+            _packageRepository = packageRepository;
+            _packageHistoryRepository = packageHistoryRepository;
             _tempPackager = tempPackager;
             _installationRecorder = installationRecorder;
         }
 
         public InstallUploadPackageCommand()
-            : this(new PackageRepository(new UpdatePackageRunner(new PackageManifestReader())), 
-                   new TempPackager(new ServerTempFile()), 
+            : this(new PackageRepository(new UpdatePackageRunner(new PackageManifestReader())),
+                   new PackageHistoryRepository(),
+                   new TempPackager(new ServerTempFile()),
                    new InstallationRecorder(new PackageHistoryRepository(), new PackageInstallationConfigurationProvider().Settings))
-        {           
+        {
         }
 
         public override void HandleRequest(HttpContextBase context)
@@ -50,25 +53,44 @@ namespace Sitecore.Ship.AspNet.Package
 
                     var uploadPackage = GetRequest(context.Request);
 
-                    PackageManifest manifest;
                     try
                     {
-                        var package = new InstallPackage { Path = _tempPackager.GetPackageToInstall(file.InputStream) };
-                        manifest = _repository.AddPackage(package);
+                        var package = new InstallPackage(
+                            _tempPackager.GetPackageToInstall(file.InputStream),
+                            context.Request.Form["DisableIndexing"],
+                            context.Request.Form["ForceInstall"]);
 
-                        _installationRecorder.RecordInstall(uploadPackage.PackageId, uploadPackage.Description, DateTime.Now);
+                        if (_packageHistoryRepository.IsAlreadyInstalled(uploadPackage.Description, package.Hash, package.ForceInstall) == false)
+                        {
+                            var manifest = _packageRepository.AddPackage(package);
+                            if (context.Request.Form["IncludeInHistory"] != "false")
+                            {
+                                _installationRecorder.RecordInstall(
+                                    uploadPackage.PackageId,
+                                    DateTime.Now,
+                                    package.Hash,
+                                    uploadPackage.Description);
+                            }
 
+                            var json = JsonConvert.SerializeObject(new { manifest.Entries });
+
+                            JsonResponse(json, HttpStatusCode.Created, context);
+
+                            context.Response.AddHeader("Location", ShipServiceUrl.PackageLatestVersion);
+                        }
+                        else
+                        {
+                            var json = JsonConvert.SerializeObject("Package has already been installed.");
+
+                            JsonResponse(json, HttpStatusCode.Accepted, context);
+
+                            context.Response.AddHeader("Location", ShipServiceUrl.InstalledPackagesCommand);
+                        }
                     }
                     finally
                     {
                         _tempPackager.Dispose();
                     }
-
-                    var json = JsonConvert.SerializeObject(new { manifest.Entries });
-
-                    JsonResponse(json, HttpStatusCode.Created, context);
-
-                    context.Response.AddHeader("Location", ShipServiceUrl.PackageLatestVersion);                       
                 }
                 catch (NotFoundException)
                 {
@@ -84,17 +106,17 @@ namespace Sitecore.Ship.AspNet.Package
         private static bool CanHandle(HttpContextBase context)
         {
             return context.Request.Url != null &&
-                   context.Request.Url.PathAndQuery.EndsWith("/services/package/install/fileupload", StringComparison.InvariantCultureIgnoreCase) && 
+                   context.Request.Url.PathAndQuery.EndsWith("/services/package/install/fileupload", StringComparison.InvariantCultureIgnoreCase) &&
                    context.Request.HttpMethod == "POST";
         }
 
         private static InstallUploadPackage GetRequest(HttpRequestBase request)
         {
             return new InstallUploadPackage
-                {
-                    PackageId = request.Form["packageId"],
-                    Description = request.Form["description"]
-                };
+            {
+                PackageId = request.Form["packageId"],
+                Description = request.Form["description"]
+            };
         }
     }
 }
